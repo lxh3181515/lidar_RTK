@@ -8,7 +8,7 @@ DataPretreatFlow::DataPretreatFlow(ros::NodeHandle& nh) {
     velocity_sub_ptr_   = std::make_shared<VelocitySubscriber>(nh, "/kitti/oxts/gps/vel", 1000000);
 
     pointcloud_pub_ptr_ = std::make_shared<PointcloudPublisher>(nh, "/synced_cloud", "velo_link", 100);
-    odometry_pub_ptr_   = std::make_shared<OdometryPublisher>(nh, "/synced_gnss", "/map", "velo_link", 100);
+    odometry_pub_ptr_   = std::make_shared<OdometryPublisher>(nh, "/synced_gnss", "map", "velo_link", 100);
 
     lidar_to_imu_ptr_   = std::make_shared<TFListener>(nh, "/imu_link", "/velo_link");
     lidar_to_imu_       = Eigen::Matrix4f::Identity();
@@ -35,7 +35,7 @@ bool DataPretreatFlow::run() {
         transformData();
         publishData();
 
-        printDataBuff();
+        // printDataBuff();
     }
     return true;
 }

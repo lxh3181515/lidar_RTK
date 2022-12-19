@@ -125,9 +125,8 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${PROJECT_BINARY_DIR}/include
 )
-
-include_directories(${PROJECT_BINARY_DIR}/include)
 
 set(ALL_TARGET_LIBRARIES "")
 
@@ -144,6 +143,10 @@ list(REMOVE_ITEM ALL_SRCS ${THIRD_PARTY_SRCS})
 add_executable(data_pretreat_node src/apps/data_pretreat_node.cpp ${ALL_SRCS})
 add_dependencies(data_pretreat_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(data_pretreat_node ${catkin_LIBRARIES} ${ALL_TARGET_LIBRARIES})
+
+add_executable(front_end_node src/apps/front_end_node.cpp ${ALL_SRCS})
+add_dependencies(front_end_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(front_end_node ${catkin_LIBRARIES} ${ALL_TARGET_LIBRARIES})
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
