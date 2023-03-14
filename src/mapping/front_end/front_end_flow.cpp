@@ -49,6 +49,6 @@ bool FrontEndFlow::updateLaserOdom() {
 
 
 bool FrontEndFlow::publishOdom() {
-    odom_pub_ptr_->publish(current_pose_);
+    odom_pub_ptr_->publish(current_pose_, current_pointcloud_data_.time);
     return true;
 }

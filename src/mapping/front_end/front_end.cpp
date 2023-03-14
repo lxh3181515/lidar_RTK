@@ -54,6 +54,7 @@ bool FrontEnd::update(const PointcloudData &cloud_data, Eigen::Matrix4f &cloud_p
         (last_keyframe_pose(1,3) - current_frame_.pose(1,3)) * (last_keyframe_pose(1,3) - current_frame_.pose(1,3)) +
         (last_keyframe_pose(2,3) - current_frame_.pose(2,3)) * (last_keyframe_pose(2,3) - current_frame_.pose(2,3)) > keyframe_dis_) {
         updateLocalMap(current_frame_);
+        last_keyframe_pose = current_frame_.pose;
     }
     return true;
 }
