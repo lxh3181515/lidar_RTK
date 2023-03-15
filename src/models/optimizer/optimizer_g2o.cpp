@@ -75,6 +75,10 @@ Eigen::MatrixXd OptimizerG2O::calInformationMatrix(const Eigen::VectorXd vector)
 
 
 bool OptimizerG2O::optimize() {
+    if (optimizer_ptr_->edges().size() < 1) {
+        return false;
+    }
+
     optimizer_ptr_->initializeOptimization();
     optimizer_ptr_->computeInitialGuess();
     optimizer_ptr_->computeActiveErrors();

@@ -27,6 +27,7 @@ private:
     std::shared_ptr<OdometrySubscriber> frontend_sub_;
     std::shared_ptr<OdometrySubscriber> gnss_sub_;
     std::shared_ptr<OdometryPublisher> backend_pub_;
+    std::shared_ptr<OdometryPublisher> corrected_gnss_pub_;
 
     std::deque<PoseData> frontend_data_buff_;
     std::deque<PoseData> gnss_data_buff_;

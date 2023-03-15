@@ -17,10 +17,13 @@ public:
     Eigen::Isometry3d toIsometry(Eigen::Matrix4d matrix);
 
     Eigen::Matrix4f getLatestOptimizedPose();
+    bool getOptimizedPoses(std::deque<Eigen::Matrix4f> &poses);
 
 private:
     std::shared_ptr<OptimizerG2O> optimizer_;
     Eigen::Matrix4d last_key_pose_;
+    Eigen::Matrix4d cur_key_pose_;
+    Eigen::Matrix4d delta_pose_;
     float key_frame_dis_;
     int new_key_frame_cnt_;
     int new_gnss_cnt_;

@@ -15,17 +15,21 @@ bool BackEnd::update(PoseData cur_frontend_pose, PoseData cur_gnss_pose) {
     if (!isKeyFrame(cur_frontend_pose))
         return false;
 
+    cur_key_pose_ = cur_frontend_pose.pose.cast<double>();
+    delta_pose_ = last_key_pose_.inverse() * cur_key_pose_;
+
     // 激光雷达里程计
     int node_num = optimizer_->getNodeNum();
-    Eigen::Matrix4d cur_key_pose = cur_frontend_pose.pose.cast<double>();
-    Eigen::Matrix4d delta_pose = cur_key_pose * last_key_pose_.inverse();
-    Eigen::Isometry3d isometry_cur_pose = toIsometry(cur_key_pose);
-    Eigen::Isometry3d isometry_measurement = toIsometry(delta_pose);
+    Eigen::Isometry3d isometry_cur_pose = toIsometry(cur_key_pose_);
+    Eigen::Isometry3d isometry_measurement = toIsometry(delta_pose_);
     Eigen::VectorXd noise_odom(6);
     noise_odom << 0.5, 0.5, 0.5, 0.001, 0.001, 0.001;
-    optimizer_->addSE3Node(isometry_cur_pose, false);
-    if (node_num != 0)
+    if (node_num == 0)
+        optimizer_->addSE3Node(isometry_cur_pose, true);
+    else {
+        optimizer_->addSE3Node(isometry_cur_pose, false);
         optimizer_->addSE3Edge(node_num - 1, node_num, isometry_measurement, noise_odom);
+    }
     new_key_frame_cnt_++;
 
     // GPS
@@ -42,9 +46,14 @@ bool BackEnd::update(PoseData cur_frontend_pose, PoseData cur_gnss_pose) {
         ROS_INFO("OPTIMIZE.");
         optimizer_->getOptimizedPoses(optimized_poses_);
         is_optimized_ = true;
+    } else {
+        if (optimized_poses_.empty())
+            optimized_poses_.push_back(cur_key_pose_.cast<float>());
+        else
+            optimized_poses_.push_back(optimized_poses_.back() * delta_pose_.cast<float>());
     }
 
-    last_key_pose_ = cur_key_pose;
+    last_key_pose_ = cur_key_pose_;
 
     return true;
 }
@@ -57,6 +66,7 @@ bool BackEnd::isKeyFrame(PoseData cur_frontend_pose) {
     if (first_key_frame) {
         is_key_frame = true;
         first_key_frame = false;
+        last_key_pose_ = cur_frontend_pose.pose.cast<double>();
     }
 
     if (fabs(cur_frontend_pose.pose(0, 3) - last_key_pose_(0, 3)) + 
@@ -71,14 +81,22 @@ bool BackEnd::isKeyFrame(PoseData cur_frontend_pose) {
 
 Eigen::Isometry3d BackEnd::toIsometry(Eigen::Matrix4d matrix) {
     Eigen::Isometry3d output = Eigen::Isometry3d::Identity();
-    output.rotate(matrix.block<3, 3>(0, 0));
-    output.translate(matrix.block<3, 1>(0, 3));
+    // output.rotate(matrix.block<3, 3>(0, 0));
+    // output.translate(matrix.block<3, 1>(0, 3));
+    output.matrix() = matrix;
     return output;
 }
 
 
 Eigen::Matrix4f BackEnd::getLatestOptimizedPose() {
     return optimized_poses_.back();
+}
+
+
+bool BackEnd::getOptimizedPoses(std::deque<Eigen::Matrix4f> &poses) {
+    poses.clear();
+    poses.insert(poses.begin(), optimized_poses_.begin(), optimized_poses_.end());
+    return !poses.empty();
 }
 
 

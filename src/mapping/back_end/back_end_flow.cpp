@@ -5,6 +5,7 @@ BackEndFlow::BackEndFlow(ros::NodeHandle& nh, std::string frontend_topic_name, s
     frontend_sub_ = std::make_shared<OdometrySubscriber>(nh_, frontend_topic_name, 100000);
     gnss_sub_     = std::make_shared<OdometrySubscriber>(nh_, "/synced_gnss", 100000);
     backend_pub_  = std::make_shared<OdometryPublisher>(nh_, backend_topic_name, "map", "lidar", 100);
+    corrected_gnss_pub_ = std::make_shared<OdometryPublisher>(nh_, "/key_gnss", "map", "lidar", 100);
     back_end_ptr_ = std::make_shared<BackEnd>();
 }
 
@@ -71,9 +72,7 @@ bool BackEndFlow::updateGraph() {
 
 
 bool BackEndFlow::publishData() {
-    if (back_end_ptr_->isOptimized()) {
-        backend_pub_->publish(back_end_ptr_->getLatestOptimizedPose());
-        return true;
-    }
-    return false;
+    backend_pub_->publish(back_end_ptr_->getLatestOptimizedPose(), cur_frontend_data_.time);
+    corrected_gnss_pub_->publish(cur_gnss_data_.pose, cur_gnss_data_.time);
+    return true;
 }
