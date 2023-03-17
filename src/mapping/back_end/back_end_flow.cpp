@@ -5,8 +5,8 @@ BackEndFlow::BackEndFlow(ros::NodeHandle& nh, std::string frontend_topic_name, s
     frontend_sub_ptr_   = std::make_shared<OdometrySubscriber>(nh_, frontend_topic_name, 100000);
     gnss_sub_ptr_       = std::make_shared<OdometrySubscriber>(nh_, "/synced_gnss", 100000);
     pointcloud_sub_ptr_ = std::make_shared<PointcloudSubscriber>(nh_, "/synced_cloud", 100000);
+    loop_sub_ptr_       = std::make_shared<LoopSubscriber>(nh_, "/loop_pose", 100000);
     backend_pub_ptr_    = std::make_shared<OdometryPublisher>(nh_, backend_topic_name, "map", "lidar", 100);
-    traj_pub_ptr_       = std::make_shared<TrajectoryPublisher>(nh_, "/path", "map", 100);
     back_end_ptr_       = std::make_shared<BackEnd>();
     loop_detect_ptr_    = std::make_shared<LoopDetect>();
 }
@@ -20,11 +20,10 @@ bool BackEndFlow::run() {
         if (!validData())
             continue;
 
+        mayHaveLoop();
+
         if (updateGraph())
             publishData();
-
-        if (loopDetect());
-
     }
     return true;
 }
@@ -34,6 +33,7 @@ bool BackEndFlow::readData() {
     frontend_sub_ptr_->ParseData(frontend_data_buff_);
     gnss_sub_ptr_->ParseData(gnss_data_buff_);
     pointcloud_sub_ptr_->parseData(cloud_data_buff_);
+    loop_sub_ptr_->parseData(loop_data_buff_);
     return true;
 }
 
@@ -78,23 +78,30 @@ bool BackEndFlow::updateGraph() {
 
 bool BackEndFlow::publishData() {
     back_end_ptr_->getLatestOptimizedPose(cur_optimized_pose_);
-    back_end_ptr_->getOptimizedPoses(optimized_poses_);
     backend_pub_ptr_->publish(cur_optimized_pose_, cur_frontend_data_.time);
-    traj_pub_ptr_->publish(optimized_poses_);
     return true;
 }
 
 
-bool BackEndFlow::loopDetect() {
-    if (loop_detect_ptr_->update(optimized_poses_)) {
-        int index;
+bool BackEndFlow::mayHaveLoop() {
+    while (!loop_data_buff_.empty()) {
+        geometry_msgs::PoseWithCovarianceStamped pose_stamped = loop_data_buff_.front();
         Eigen::Matrix4f transform;
-        loop_detect_ptr_->getLoopTransMatrix(index, transform);
-        back_end_ptr_->insertLoop(index, transform);
-        ROS_INFO("Loop detected!");
-        return true;
+        transform(0, 3) = pose_stamped.pose.pose.position.x;
+        transform(1, 3) = pose_stamped.pose.pose.position.y;
+        transform(2, 3) = pose_stamped.pose.pose.position.z;
+        Eigen::Quaternionf q;
+        q.x() = pose_stamped.pose.pose.orientation.x;
+        q.y() = pose_stamped.pose.pose.orientation.y;
+        q.z() = pose_stamped.pose.pose.orientation.z;
+        q.w() = pose_stamped.pose.pose.orientation.w;
+        transform.block<3, 3>(0, 0) = q.matrix();
+        back_end_ptr_->insertLoop(pose_stamped.pose.covariance.at(0), pose_stamped.pose.covariance.at(1), transform);
+        loop_data_buff_.pop_front();
+
+        ROS_INFO("Loop closed.");
     }
-    return false;
+    return true;
 }
 
 

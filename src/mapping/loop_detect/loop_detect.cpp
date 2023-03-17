@@ -15,7 +15,7 @@ LoopDetect::LoopDetect() {
     loop_dis_ = 10.0;
     loop_step_ = 5;
     reg_map_size_ = 5;
-    score_limit_ = 0.3;
+    score_limit_ = 1.0;
 }
 
 

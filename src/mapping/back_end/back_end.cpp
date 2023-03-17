@@ -81,14 +81,14 @@ bool BackEnd::update(PoseData cur_frontend_pose,
 }
 
 
-bool BackEnd::insertLoop(int his_index, Eigen::Matrix4f transform) {
+bool BackEnd::insertLoop(int old_index, int new_index, Eigen::Matrix4f transform) {
     int node_num = optimizer_ptr_->getNodeNum();
 
     // 回环
     Eigen::Isometry3d isometry_measurement = toIsometry(transform.cast<double>());
     Eigen::VectorXd noise_loop(6);
     noise_loop << 0.3, 0.3, 0.3, 0.001, 0.001, 0.001;
-    optimizer_ptr_->addSE3Edge(his_index, node_num - 1, isometry_measurement, noise_loop);
+    optimizer_ptr_->addSE3Edge(old_index, new_index, isometry_measurement, noise_loop);
     new_loop_cnt_++;
 
     return true;
