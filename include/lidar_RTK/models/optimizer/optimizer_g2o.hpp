@@ -8,6 +8,8 @@
 #include <g2o/core/optimization_algorithm_levenberg.h>
 #include <g2o/solvers/eigen/linear_solver_eigen.h>
 #include <g2o/types/slam3d/types_slam3d.h>
+#include <g2o/core/robust_kernel_factory.h>
+#include <g2o/core/factory.h>
 
 class OptimizerG2O : public Optimizer {
 public:
@@ -33,6 +35,8 @@ private:
 
     g2o::OptimizationAlgorithmLevenberg *solver_ptr_;
     g2o::SparseOptimizer* optimizer_ptr_;
+
+    g2o::RobustKernelFactory *robust_kernel_factory_;
 
     int node_cnt_, edge_cnt_;
     int optimize_times_;

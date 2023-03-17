@@ -13,6 +13,7 @@ public:
                            const Eigen::Matrix4f &predict_pose, 
                            PointcloudData::CLOUD_PTR &result_cloud_ptr,
                            Eigen::Matrix4f &result_pose) = 0;
+    virtual float getScore() = 0;
 };
 
 #endif

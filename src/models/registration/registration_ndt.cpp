@@ -26,3 +26,8 @@ bool RegistrationNDT::scanMatch(const PointcloudData::CLOUD_PTR &cloud_input_ptr
     result_pose = register_ndt_ptr_->getFinalTransformation();
     return true;
 }
+
+
+float RegistrationNDT::getScore() {
+    return register_ndt_ptr_->getFitnessScore();
+}

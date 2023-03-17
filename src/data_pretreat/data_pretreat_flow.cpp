@@ -145,6 +145,9 @@ bool DataPretreatFlow::isValidData() {
 
 
 bool DataPretreatFlow::transformData() {
+    static Eigen::Matrix4f t_gnss_lidar;
+    static bool is_first_data = 1;
+
     current_gnss_pose_ = Eigen::Matrix4f::Identity();
 
     // Get gnss pose
@@ -154,6 +157,11 @@ bool DataPretreatFlow::transformData() {
     current_gnss_pose_(2, 3) = current_gnss_data_.local_U;
     current_gnss_pose_.block<3, 3>(0, 0) = current_imu_data_.orientation2Matrix();
     current_gnss_pose_ *= lidar_to_imu_;
+    if (is_first_data) {
+        t_gnss_lidar = current_gnss_pose_.inverse();
+        is_first_data = 0;
+    }
+    current_gnss_pose_ = t_gnss_lidar * current_gnss_pose_;
 
     // Distortion adjust
     current_velocity_data_.transformCoordinate(lidar_to_imu_);

@@ -34,6 +34,10 @@ bool OptimizerG2O::addSE3Edge(int vertex_index1,
                               int vertex_index2,
                               const Eigen::Isometry3d &measured_pose,
                               const Eigen::VectorXd noise) {
+    if (vertex_index1 < 0 || vertex_index1 >= node_cnt_ || 
+        vertex_index2 < 0 || vertex_index2 >= node_cnt_)
+        return false;
+
     // 计算信息矩阵
     Eigen::MatrixXd information_matrix = calInformationMatrix(noise);
 
@@ -52,6 +56,9 @@ bool OptimizerG2O::addSE3Edge(int vertex_index1,
 bool OptimizerG2O::addSE3PriorXYZEdge(int vertex_index,
                                     const Eigen::Vector3d &measured_t,
                                     const Eigen::VectorXd noise) {
+    if (vertex_index < 0 || vertex_index >= node_cnt_)
+        return false;
+
     // 计算信息矩阵
     Eigen::MatrixXd information_matrix = calInformationMatrix(noise);
 
@@ -91,6 +98,7 @@ bool OptimizerG2O::optimize() {
 
 bool OptimizerG2O::getOptimizedPoses(std::deque<Eigen::Matrix4f>& optimized_poses) {
     optimized_poses.clear();
+    
     int num = optimizer_ptr_->vertices().size();
     for (int i = 0; i < num; i++) {
         g2o::VertexSE3 * v = dynamic_cast<g2o::VertexSE3 *>(optimizer_ptr_->vertices()[i]);

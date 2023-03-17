@@ -14,9 +14,25 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   pcl_ros
+  std_srvs
+  std_msgs
+  message_generation
 )
 
-catkin_package()
+add_service_files(
+   FILES
+   optimizeMap.srv
+)
+
+generate_messages(
+   DEPENDENCIES
+   std_msgs
+)
+
+catkin_package(
+  CATKIN_DEPENDS 
+  message_runtime
+)
 
 include_directories(
   include

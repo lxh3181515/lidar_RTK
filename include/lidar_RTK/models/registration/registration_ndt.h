@@ -16,6 +16,7 @@ public:
                     const Eigen::Matrix4f &predict_pose, 
                     PointcloudData::CLOUD_PTR &result_cloud_ptr,
                     Eigen::Matrix4f &result_pose) override;
+    float getScore() override;
 
 private:
     REGISTER::Ptr register_ndt_ptr_;
