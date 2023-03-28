@@ -11,8 +11,7 @@ PointcloudPublisher::PointcloudPublisher(ros::NodeHandle& nh,
 
 
 void PointcloudPublisher::publish(PointcloudData::CLOUD_PTR& cloud_ptr_input, double time) {
-    ros::Time ros_time((float)time);
-    publishData(cloud_ptr_input, ros_time);
+    publishData(cloud_ptr_input, ros::Time().fromSec(time));
 }
 
 

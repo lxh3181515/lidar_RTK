@@ -13,8 +13,7 @@ TrajectoryPublisher::TrajectoryPublisher(ros::NodeHandle& nh,
 
 
 void TrajectoryPublisher::publish(const std::deque<Eigen::Matrix4f> & transform_matrix, double time) {
-    ros::Time ros_time((float)time);
-    publishData(transform_matrix, ros_time);
+    publishData(transform_matrix, ros::Time().fromSec(time));
 }
 
 

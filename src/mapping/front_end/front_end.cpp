@@ -10,7 +10,7 @@ FrontEnd::FrontEnd() {
     local_map_filter_ptr_->setLeafSize(0.6f, 0.6f, 0.6f);
 
     init_pose_ = Eigen::Matrix4f::Identity();
-    keyframe_dis_ = 2.0;
+    keyframe_dis_ = 1.0;
     local_frame_num_ = 20;
 }
 

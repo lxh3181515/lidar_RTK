@@ -3,7 +3,7 @@
 
 BackEnd::BackEnd() {
     optimizer_ptr_ = std::make_shared<OptimizerG2O>();
-    key_frame_dis_ = 2.0;
+    key_frame_dis_ = 1.0;
     new_key_frame_cnt_ = 0;
     new_gnss_cnt_ = 0;
     new_loop_cnt_ = 0;
@@ -81,9 +81,57 @@ bool BackEnd::update(PoseData cur_frontend_pose,
 }
 
 
-bool BackEnd::insertLoop(int old_index, int new_index, Eigen::Matrix4f transform) {
-    int node_num = optimizer_ptr_->getNodeNum();
+bool BackEnd::update(PoseData cur_frontend_pose, 
+                     PointcloudData cur_cloud) {
+    if (!isKeyFrame(cur_frontend_pose))
+        return false;
 
+    int node_num = optimizer_ptr_->getNodeNum();
+    cur_key_pose_ = cur_frontend_pose.pose.cast<double>();
+    delta_pose_ = last_key_pose_.inverse() * cur_key_pose_;
+
+    // 保存关键帧点云
+    std::string file_path = file_path_ + "/slam_data/key_frames/key_frame_" + std::to_string(node_num) + ".pcd";
+    pcl::io::savePCDFileBinary(file_path, *(cur_cloud.cloud_ptr));
+
+    // 保存轨迹
+    savePose(laser_odom_ofs_, cur_frontend_pose.pose);
+
+    // 激光雷达里程计
+    Eigen::Isometry3d isometry_cur_pose = toIsometry(cur_key_pose_);
+    Eigen::Isometry3d isometry_measurement = toIsometry(delta_pose_);
+    Eigen::VectorXd noise_odom(6);
+    noise_odom << 0.5, 0.5, 0.5, 0.001, 0.001, 0.001;
+    if (node_num == 0)
+        optimizer_ptr_->addSE3Node(isometry_cur_pose, true);
+    else {
+        optimizer_ptr_->addSE3Node(isometry_cur_pose, false);
+        optimizer_ptr_->addSE3Edge(node_num - 1, node_num, isometry_measurement, noise_odom);
+    }
+    new_key_frame_cnt_++;
+
+    // 达到次数，进行优化
+    if (new_loop_cnt_ > 5) {
+        optimizer_ptr_->optimize();
+        new_key_frame_cnt_ = 0;
+        new_loop_cnt_ = 0;
+        ROS_INFO("OPTIMIZE.");
+        optimizer_ptr_->getOptimizedPoses(optimized_poses_);
+        is_optimized_ = true;
+    } else {
+        if (optimized_poses_.empty())
+            optimized_poses_.push_back(cur_key_pose_.cast<float>());
+        else
+            optimized_poses_.push_back(optimized_poses_.back() * delta_pose_.cast<float>());
+    }
+
+    last_key_pose_ = cur_key_pose_;
+
+    return true;
+}
+
+
+bool BackEnd::insertLoop(int old_index, int new_index, Eigen::Matrix4f transform) {
     // 回环
     Eigen::Isometry3d isometry_measurement = toIsometry(transform.cast<double>());
     Eigen::VectorXd noise_loop(6);

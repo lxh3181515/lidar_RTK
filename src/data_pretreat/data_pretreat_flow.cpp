@@ -35,7 +35,7 @@ bool DataPretreatFlow::run() {
         transformData();
         publishData();
 
-        // printDataBuff();
+        printDataBuff();
     }
     return true;
 }
@@ -101,7 +101,8 @@ bool DataPretreatFlow::hasData() {
     if (   pointcloud_data_buff_.empty()  
         || imu_data_buff_.empty()  
         || gnss_data_buff_.empty()  
-        || velocity_data_buff_.empty())
+        || velocity_data_buff_.empty()
+        )
         return false;
     
     return true;

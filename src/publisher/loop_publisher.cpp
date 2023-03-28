@@ -15,8 +15,7 @@ void LoopPublisher::publish(const int old_index,
                             const int new_index, 
                             const Eigen::Matrix4f& transform_matrix, 
                             double time) {
-    ros::Time ros_time((float)time);
-    publishData(old_index, new_index, transform_matrix, ros_time);
+    publishData(old_index, new_index, transform_matrix, ros::Time().fromSec(time));
 }
 
 

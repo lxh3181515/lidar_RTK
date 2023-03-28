@@ -14,8 +14,7 @@ OdometryPublisher::OdometryPublisher(ros::NodeHandle& nh,
 
 
 void OdometryPublisher::publish(const Eigen::Matrix4f& transform_matrix, double time) {
-    ros::Time ros_time((float)time);
-    publishData(transform_matrix, ros_time);
+    publishData(transform_matrix, ros::Time().fromSec(time));
 }
 
 

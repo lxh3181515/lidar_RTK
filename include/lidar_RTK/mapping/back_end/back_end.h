@@ -20,6 +20,8 @@ public:
     bool update(PoseData cur_frontend_pose, 
                 PoseData cur_gnss_pose, 
                 PointcloudData cur_cloud);
+    bool update(PoseData cur_frontend_pose, 
+                PointcloudData cur_cloud);
     bool insertLoop(int old_index, int new_index, Eigen::Matrix4f transform);
     bool isKeyFrame(PoseData cur_frontend_pose);
     bool isOptimized();
