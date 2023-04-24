@@ -1,17 +1,34 @@
 #include "lidar_RTK/mapping/front_end/front_end.h"
+#include "lidar_RTK/global_defination/global_defination.h"
 
 
 FrontEnd::FrontEnd() {
-    registration_ptr_ = std::make_shared<RegistrationNDT>();
-    frame_filter_ptr_ = pcl::make_shared<pcl::VoxelGrid<PointcloudData::POINT>>();
-    local_map_filter_ptr_ = pcl::make_shared<pcl::VoxelGrid<PointcloudData::POINT>>();
+    std::string config_file_path = WORK_SPACE_PATH + "/config/front_end.yaml";
+    YAML::Node config_node = YAML::LoadFile(config_file_path);
 
-    frame_filter_ptr_->setLeafSize(1.3f, 1.3f, 1.3f);
-    local_map_filter_ptr_->setLeafSize(0.6f, 0.6f, 0.6f);
+    std::cout << "-----------------前端初始化-------------------" << std::endl;
+    keyframe_dis_ = config_node["key_frame_distance"].as<float>();
+    local_frame_num_ = config_node["local_frame_num"].as<int>();
+
+    // Init NDT
+    registration_ptr_ = std::make_shared<RegistrationNDT>(config_node["res"].as<float>(), 
+                                                          config_node["step_size"].as<float>(), 
+                                                          config_node["trans_eps"].as<float>(), 
+                                                          config_node["max_iter"].as<int>());
+
+    // Init frame filter
+    frame_filter_ptr_ = pcl::make_shared<pcl::VoxelGrid<PointcloudData::POINT>>();
+    frame_filter_ptr_->setLeafSize(config_node["frame"]["leaf_size"][0].as<float>(), 
+                                   config_node["frame"]["leaf_size"][1].as<float>(), 
+                                   config_node["frame"]["leaf_size"][2].as<float>());
+
+    // Init local map filter
+    local_map_filter_ptr_ = pcl::make_shared<pcl::VoxelGrid<PointcloudData::POINT>>();
+    local_map_filter_ptr_->setLeafSize(config_node["local_map"]["leaf_size"][0].as<float>(), 
+                                       config_node["local_map"]["leaf_size"][1].as<float>(), 
+                                       config_node["local_map"]["leaf_size"][2].as<float>());
 
     init_pose_ = Eigen::Matrix4f::Identity();
-    keyframe_dis_ = 1.0;
-    local_frame_num_ = 20;
 }
 
 

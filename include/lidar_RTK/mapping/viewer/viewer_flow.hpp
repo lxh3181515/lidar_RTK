@@ -3,6 +3,7 @@
 
 #include <ros/ros.h>
 #include <deque>
+#include <yaml-cpp/yaml.h>
 
 #include "lidar_RTK/subscriber/path_subscriber.hpp"
 #include "lidar_RTK/publisher/pointcloud_publisher.h"

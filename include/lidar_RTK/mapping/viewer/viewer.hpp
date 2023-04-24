@@ -7,6 +7,7 @@
 
 #include <deque>
 #include <ros/message.h>
+#include <yaml-cpp/yaml.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>

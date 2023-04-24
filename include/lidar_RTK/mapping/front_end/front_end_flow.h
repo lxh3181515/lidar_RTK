@@ -3,6 +3,7 @@
 
 #include <ros/ros.h>
 #include <deque>
+#include <yaml-cpp/yaml.h>
 
 #include "lidar_RTK/subscriber/pointcloud_subscriber.h"
 #include "lidar_RTK/sensor_data/pointcloud_data.h"
@@ -12,7 +13,7 @@
 
 class FrontEndFlow {
 public:
-    FrontEndFlow(ros::NodeHandle &nh, std::string pointcloud_topic, std::string odom_topic);
+    FrontEndFlow(ros::NodeHandle &nh);
 
     bool run();
     bool readData();

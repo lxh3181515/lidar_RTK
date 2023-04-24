@@ -2,6 +2,7 @@
 #define LIDAR_RTK_MAPPING_FRONT_END_FRONT_END_H_
 
 #include <deque>
+#include <yaml-cpp/yaml.h>
 
 #include "Eigen/Dense"
 #include "pcl/filters/voxel_grid.h"

@@ -47,6 +47,7 @@ include(cmake/geographic.cmake)
 include(cmake/eigen.cmake)
 include(cmake/g2o.cmake)
 include(cmake/glog.cmake)
+include(cmake/YAML.cmake)
 include(cmake/global_defination.cmake)
 
 file(GLOB_RECURSE ALL_SRCS "*.cpp")

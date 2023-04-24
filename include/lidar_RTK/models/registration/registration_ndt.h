@@ -10,6 +10,7 @@ public:
 
 public:
     RegistrationNDT();
+    RegistrationNDT(float res, float step, float trans_eps, int max_iter);
 
     bool setInputTarget(const PointcloudData::CLOUD_PTR &pointcloud_input) override;
     bool scanMatch( const PointcloudData::CLOUD_PTR &cloud_input_ptr,

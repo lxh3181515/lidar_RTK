@@ -3,6 +3,7 @@
 
 #include <ros/ros.h>
 #include <deque>
+#include <yaml-cpp/yaml.h>
 
 #include "lidar_RTK/subscriber/odometry_subscriber.hpp"
 #include "lidar_RTK/subscriber/pointcloud_subscriber.h"
@@ -16,7 +17,7 @@
 
 class BackEndFlow {
 public:
-    BackEndFlow(ros::NodeHandle& nh, std::string frontend_topic_name, std::string backend_topic_name);
+    BackEndFlow(ros::NodeHandle& nh);
 
     bool run();
     bool readData();
@@ -49,7 +50,10 @@ private:
     PoseData cur_gnss_data_;
     PointcloudData cur_cloud_data_;
     
-    bool use_gps_;
+    bool use_gnss_;
+    bool use_loop_close_;
+    bool have_gnss_;
+    bool valid_gnss_;
 };
 
 #endif

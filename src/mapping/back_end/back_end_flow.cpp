@@ -1,18 +1,32 @@
 #include "lidar_RTK/mapping/back_end/back_end_flow.hpp"
+#include "lidar_RTK/global_defination/global_defination.h"
 
 
-BackEndFlow::BackEndFlow(ros::NodeHandle& nh, std::string frontend_topic_name, std::string backend_topic_name):nh_(nh) {
-    frontend_sub_ptr_   = std::make_shared<OdometrySubscriber>(nh_, frontend_topic_name, 100000);
-    gnss_sub_ptr_       = std::make_shared<OdometrySubscriber>(nh_, "/synced_gnss", 100000);
-    // pointcloud_sub_ptr_ = std::make_shared<PointcloudSubscriber>(nh_, "/synced_cloud", 100000);
-    pointcloud_sub_ptr_ = std::make_shared<PointcloudSubscriber>(nh_, "/lslidar_point_cloud", 100000);
-    loop_sub_ptr_       = std::make_shared<LoopSubscriber>(nh_, "/loop_pose", 100000);
-    backend_pub_ptr_    = std::make_shared<OdometryPublisher>(nh_, backend_topic_name, "map", "lidar", 100);
-    path_pub_ptr_       = std::make_shared<PathPublisher>(nh_, "/path", "map", 100);
+BackEndFlow::BackEndFlow(ros::NodeHandle& nh):nh_(nh) {
+    std::string config_file_path = WORK_SPACE_PATH + "/config/topic.yaml";
+    YAML::Node config_node = YAML::LoadFile(config_file_path);
+
+    frontend_sub_ptr_   = std::make_shared<OdometrySubscriber>(nh_, config_node["lidar_odom_topic"]["name"].as<std::string>(), 100000);
+    gnss_sub_ptr_       = std::make_shared<OdometrySubscriber>(nh_, config_node["gnss_topic"].as<std::string>(), 100000);
+    pointcloud_sub_ptr_ = std::make_shared<PointcloudSubscriber>(nh_, config_node["pointcloud_topic"].as<std::string>(), 100000);
+    loop_sub_ptr_       = std::make_shared<LoopSubscriber>(nh_, config_node["loop_topic"].as<std::string>(), 100000);
+    
+    backend_pub_ptr_    = std::make_shared<OdometryPublisher>(nh_, 
+                                                              config_node["optimized_odom_topic"]["name"].as<std::string>(), 
+                                                              config_node["optimized_odom_topic"]["base_frame"].as<std::string>(), 
+                                                              config_node["optimized_odom_topic"]["child_frame"].as<std::string>(),
+                                                              100);
+    path_pub_ptr_       = std::make_shared<PathPublisher>(nh_, 
+                                                          config_node["path_topic"]["name"].as<std::string>(), 
+                                                          config_node["path_topic"]["base_frame"].as<std::string>(), 
+                                                          100);
     back_end_ptr_       = std::make_shared<BackEnd>();
     loop_detect_ptr_    = std::make_shared<LoopDetect>();
 
-    use_gps_ = false;
+    use_gnss_ = config_node["use_gnss"].as<bool>();
+    use_loop_close_ = config_node["use_loop_close"].as<bool>();
+    have_gnss_ = false;
+    valid_gnss_ = false;
 }
 
 
@@ -22,9 +36,6 @@ bool BackEndFlow::run() {
     
     while (hasData()) {
         if (!validData()) {
-            // ROS_INFO("cloud:%.2f, odom:%.2f", cur_cloud_data_.time, cur_frontend_data_.time);
-            // ros::Time time = ros::Time().fromSec(cur_cloud_data_.time);
-            // ROS_INFO("cloud:%.2f", time.toSec());
             continue;
         }
 
@@ -47,8 +58,11 @@ bool BackEndFlow::readData() {
 
 
 bool BackEndFlow::hasData() {
-    if (use_gps_ && gnss_data_buff_.empty())
-        return false;
+    if (use_gnss_ && !gnss_data_buff_.empty())
+        have_gnss_ = true;
+    else
+        have_gnss_ = false;
+    
     return !(frontend_data_buff_.empty() || cloud_data_buff_.empty());
 }
 
@@ -58,7 +72,7 @@ bool BackEndFlow::validData() {
     cur_cloud_data_ = cloud_data_buff_.front();
 
     // 时间同步
-    double diff_time_cloud= cur_frontend_data_.time - cur_cloud_data_.time;
+    double diff_time_cloud = cur_frontend_data_.time - cur_cloud_data_.time;
     if (diff_time_cloud > 0.05) {
         cloud_data_buff_.pop_front();
         return false;
@@ -68,32 +82,34 @@ bool BackEndFlow::validData() {
         return false;
     }
 
-    // 使用GPS
-    if (use_gps_) {
-        cur_gnss_data_ = gnss_data_buff_.front();
-        double diff_time_gnss = cur_frontend_data_.time - cur_gnss_data_.time;
-        if (diff_time_gnss > 0.05) {
-            gnss_data_buff_.pop_front();
-            return false;
-        }
-        if (diff_time_gnss < -0.05 ) {
-            frontend_data_buff_.pop_front();
-            return false;
-        }
-        gnss_data_buff_.pop_front();
-    }
-
     frontend_data_buff_.pop_front();
     cloud_data_buff_.pop_front();
+
+    // GPS
+    if (have_gnss_) {
+        double diff_time_gnss;
+        do {
+            cur_gnss_data_ = gnss_data_buff_.front();
+            gnss_data_buff_.pop_front();
+            diff_time_gnss = cur_frontend_data_.time - cur_gnss_data_.time;
+        } while (diff_time_gnss > 0.05 && !gnss_data_buff_.empty());
+
+        if (diff_time_gnss < 0.05 && diff_time_gnss > -0.05)
+            valid_gnss_ = true;
+    }
 
     return true;
 }
 
 
 bool BackEndFlow::updateGraph() {
-    if (use_gps_)
+    // pub cur scan
+    
+
+    if (valid_gnss_) {
+        valid_gnss_ = false;
         return back_end_ptr_->update(cur_frontend_data_, cur_gnss_data_, cur_cloud_data_);
-    else
+    } else
         return back_end_ptr_->update(cur_frontend_data_, cur_cloud_data_);
 }
 
@@ -112,6 +128,11 @@ bool BackEndFlow::publishData() {
 
 
 bool BackEndFlow::mayHaveLoop() {
+    if (!use_loop_close_) {
+        loop_data_buff_.clear();
+        return false;
+    }
+
     while (!loop_data_buff_.empty()) {
         geometry_msgs::PoseWithCovarianceStamped pose_stamped = loop_data_buff_.front();
         Eigen::Matrix4f transform;

@@ -1,10 +1,20 @@
 #include "lidar_RTK/mapping/viewer/viewer_flow.hpp"
+#include "lidar_RTK/global_defination/global_defination.h"
 
 
 ViewerFlow::ViewerFlow(ros::NodeHandle& nh) :nh_(nh) {
-    path_sub_ptr_ = std::make_shared<PathSubscriber>(nh_, "/path", 100000);
-    map_pub_ptr_  = std::make_shared<PointcloudPublisher>(nh_, "/map", "map", 100);
-    scan_pub_ptr_ = std::make_shared<PointcloudPublisher>(nh_, "/scan", "map", 100);
+    std::string config_file_path = WORK_SPACE_PATH + "/config/topic.yaml";
+    YAML::Node config_node = YAML::LoadFile(config_file_path);
+
+    path_sub_ptr_ = std::make_shared<PathSubscriber>(nh_, config_node["path_topic"]["name"].as<std::string>(), 100000);
+    map_pub_ptr_  = std::make_shared<PointcloudPublisher>(nh_, 
+                                                          config_node["map_topic"]["name"].as<std::string>(), 
+                                                          config_node["map_topic"]["base_frame"].as<std::string>(), 
+                                                          100);
+    scan_pub_ptr_ = std::make_shared<PointcloudPublisher>(nh_, 
+                                                          config_node["scan_topic"]["name"].as<std::string>(), 
+                                                          config_node["scan_topic"]["base_frame"].as<std::string>(), 
+                                                          100);
     viewer_ptr_   = std::make_shared<Viewer>();
 }
 

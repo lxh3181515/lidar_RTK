@@ -72,6 +72,10 @@
         "bit": "cpp",
         "core": "cpp",
         "numericaldiff": "cpp",
-        "*.ipp": "cpp"
-    }
+        "*.ipp": "cpp",
+        "*.in": "cpp"
+    },
+    "python.analysis.extraPaths": [
+        "/opt/ros/noetic/lib/python3/dist-packages"
+    ]
 }

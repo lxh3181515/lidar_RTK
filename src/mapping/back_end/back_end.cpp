@@ -1,15 +1,34 @@
 #include "lidar_RTK/mapping/back_end/back_end.h"
+#include "lidar_RTK/global_defination/global_defination.h"
 
 
 BackEnd::BackEnd() {
+    std::string config_file_path = WORK_SPACE_PATH + "/config/back_end.yaml";
+    YAML::Node config_node = YAML::LoadFile(config_file_path);
+
+    std::cout << "-----------------后端初始化-------------------" << std::endl;
+
+    key_frame_dis_ = config_node["key_frame_distance"].as<float>();
+    file_path_ = config_node["data_path"].as<std::string>();
+
+    optimize_step_with_gnss_ = config_node["optimize_step_with_gnss"].as<int>();
+    optimize_step_with_loop_ = config_node["optimize_step_with_loop"].as<int>();
+
+    noise_odom_.resize(6);
+    noise_loop_.resize(6);
+    noise_gnss_.resize(3);
+    for (int i = 0; i < 6; i++) {
+        noise_odom_(i) = config_node["g2o_param"]["odom_edge_noise"][i].as<double>();
+        noise_loop_(i) = config_node["g2o_param"]["close_loop_noise"][i].as<double>();
+        if (i < 3)
+            noise_gnss_(i) = config_node["g2o_param"]["gnss_noise"][i].as<double>();
+    }
+
     optimizer_ptr_ = std::make_shared<OptimizerG2O>();
-    key_frame_dis_ = 1.0;
     new_key_frame_cnt_ = 0;
     new_gnss_cnt_ = 0;
     new_loop_cnt_ = 0;
     is_optimized_ = false;
-
-    file_path_ = "/media/lxhong/Datasets";
 
     FileManager::CreateDirectory(file_path_ + "/slam_data");
     FileManager::InitDirectory(file_path_ + "/slam_data/key_frames", "关键帧点云");
@@ -38,42 +57,10 @@ bool BackEnd::update(PoseData cur_frontend_pose,
     savePose(ground_truth_ofs_, cur_gnss_pose.pose);
     savePose(laser_odom_ofs_, cur_frontend_pose.pose);
 
-    // 激光雷达里程计
-    Eigen::Isometry3d isometry_cur_pose = toIsometry(cur_key_pose_);
-    Eigen::Isometry3d isometry_measurement = toIsometry(delta_pose_);
-    Eigen::VectorXd noise_odom(6);
-    noise_odom << 0.5, 0.5, 0.5, 0.001, 0.001, 0.001;
-    if (node_num == 0)
-        optimizer_ptr_->addSE3Node(isometry_cur_pose, true);
-    else {
-        optimizer_ptr_->addSE3Node(isometry_cur_pose, false);
-        optimizer_ptr_->addSE3Edge(node_num - 1, node_num, isometry_measurement, noise_odom);
-    }
-    new_key_frame_cnt_++;
-
-    // GPS
-    if (new_key_frame_cnt_ > 100) {
-        Eigen::VectorXd noise_gnss(3);
-        noise_gnss << 2.0, 2.0, 2.0;
-        optimizer_ptr_->addSE3PriorXYZEdge(node_num, cur_gnss_pose.pose.block<3, 1>(0, 3).cast<double>(), noise_gnss);
-        new_gnss_cnt_++;
-    }
-
-    // 达到次数，进行优化
-    if (new_gnss_cnt_ > 0 || new_loop_cnt_ > 5) {
-        optimizer_ptr_->optimize();
-        new_key_frame_cnt_ = 0;
-        new_gnss_cnt_ = 0;
-        new_loop_cnt_ = 0;
-        ROS_INFO("OPTIMIZE.");
-        optimizer_ptr_->getOptimizedPoses(optimized_poses_);
-        is_optimized_ = true;
-    } else {
-        if (optimized_poses_.empty())
-            optimized_poses_.push_back(cur_key_pose_.cast<float>());
-        else
-            optimized_poses_.push_back(optimized_poses_.back() * delta_pose_.cast<float>());
-    }
+    // 图优化
+    insertOdom(node_num, cur_key_pose_, delta_pose_);
+    insertGNSS(node_num, cur_gnss_pose.pose.cast<double>());
+    optimize();
 
     last_key_pose_ = cur_key_pose_;
 
@@ -97,23 +84,53 @@ bool BackEnd::update(PoseData cur_frontend_pose,
     // 保存轨迹
     savePose(laser_odom_ofs_, cur_frontend_pose.pose);
 
-    // 激光雷达里程计
-    Eigen::Isometry3d isometry_cur_pose = toIsometry(cur_key_pose_);
-    Eigen::Isometry3d isometry_measurement = toIsometry(delta_pose_);
-    Eigen::VectorXd noise_odom(6);
-    noise_odom << 0.5, 0.5, 0.5, 0.001, 0.001, 0.001;
-    if (node_num == 0)
+    // 图优化
+    insertOdom(node_num, cur_key_pose_, delta_pose_);
+    optimize();
+
+    last_key_pose_ = cur_key_pose_;
+
+    return true;
+}
+
+
+// 激光雷达里程计
+bool BackEnd::insertOdom(int index, Eigen::Matrix4d node_pose, Eigen::Matrix4d meas_pose) {
+    Eigen::Isometry3d isometry_cur_pose = toIsometry(node_pose);
+    Eigen::Isometry3d isometry_measurement = toIsometry(meas_pose);
+    if (index == 0)
         optimizer_ptr_->addSE3Node(isometry_cur_pose, true);
     else {
         optimizer_ptr_->addSE3Node(isometry_cur_pose, false);
-        optimizer_ptr_->addSE3Edge(node_num - 1, node_num, isometry_measurement, noise_odom);
+        optimizer_ptr_->addSE3Edge(index - 1, index, isometry_measurement, noise_odom_);
     }
     new_key_frame_cnt_++;
+    return true;
+}
 
-    // 达到次数，进行优化
-    if (new_loop_cnt_ > 5) {
+
+// GNSS
+bool BackEnd::insertGNSS(int index, Eigen::Matrix4d meas_pose) {
+    optimizer_ptr_->addSE3PriorXYZEdge(index, meas_pose.block<3, 1>(0, 3), noise_gnss_);
+    new_gnss_cnt_++;
+    return true;
+}
+
+
+// 回环
+bool BackEnd::insertLoop(int old_index, int new_index, Eigen::Matrix4f transform) {
+    Eigen::Isometry3d isometry_measurement = toIsometry(transform.cast<double>());
+    optimizer_ptr_->addSE3Edge(old_index, new_index, isometry_measurement, noise_loop_);
+    new_loop_cnt_++;
+    return true;
+}
+
+
+bool BackEnd::optimize() {
+    if (new_gnss_cnt_ > optimize_step_with_gnss_ || new_loop_cnt_ > optimize_step_with_loop_) {
         optimizer_ptr_->optimize();
         new_key_frame_cnt_ = 0;
+        new_gnss_cnt_ = 0;
         new_loop_cnt_ = 0;
         ROS_INFO("OPTIMIZE.");
         optimizer_ptr_->getOptimizedPoses(optimized_poses_);
@@ -124,21 +141,6 @@ bool BackEnd::update(PoseData cur_frontend_pose,
         else
             optimized_poses_.push_back(optimized_poses_.back() * delta_pose_.cast<float>());
     }
-
-    last_key_pose_ = cur_key_pose_;
-
-    return true;
-}
-
-
-bool BackEnd::insertLoop(int old_index, int new_index, Eigen::Matrix4f transform) {
-    // 回环
-    Eigen::Isometry3d isometry_measurement = toIsometry(transform.cast<double>());
-    Eigen::VectorXd noise_loop(6);
-    noise_loop << 0.3, 0.3, 0.3, 0.001, 0.001, 0.001;
-    optimizer_ptr_->addSE3Edge(old_index, new_index, isometry_measurement, noise_loop);
-    new_loop_cnt_++;
-
     return true;
 }
 

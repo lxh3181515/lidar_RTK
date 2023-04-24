@@ -10,6 +10,15 @@ RegistrationNDT::RegistrationNDT() {
     register_ndt_ptr_->setMaximumIterations(30);
 }
 
+RegistrationNDT::RegistrationNDT(float res, float step, float trans_eps, int max_iter) {
+    register_ndt_ptr_ = pcl::make_shared<REGISTER>();
+
+    register_ndt_ptr_->setResolution(res);
+    register_ndt_ptr_->setStepSize(step);
+    register_ndt_ptr_->setTransformationEpsilon(trans_eps);
+    register_ndt_ptr_->setMaximumIterations(max_iter);
+}
+
 
 bool RegistrationNDT::setInputTarget(const PointcloudData::CLOUD_PTR &pointcloud_input) {
     register_ndt_ptr_->setInputTarget(pointcloud_input);

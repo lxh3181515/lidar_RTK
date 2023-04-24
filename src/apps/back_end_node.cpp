@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
     ros::init(argc, argv, "back_end_node");
     ros::NodeHandle nh;
 
-    std::shared_ptr<BackEndFlow> back_end_flow_ptr = std::make_shared<BackEndFlow>(nh, "/laser_odom", "/optimized_pose");
+    std::shared_ptr<BackEndFlow> back_end_flow_ptr = std::make_shared<BackEndFlow>(nh);
 
     ros::ServiceServer service = nh.advertiseService("optimize_map", optimize_map_callback);
 

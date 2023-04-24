@@ -11,7 +11,7 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
-
+#include <yaml-cpp/yaml.h>
 
 class BackEnd {
 public:
@@ -22,16 +22,19 @@ public:
                 PointcloudData cur_cloud);
     bool update(PoseData cur_frontend_pose, 
                 PointcloudData cur_cloud);
+    bool insertOdom(int index, Eigen::Matrix4d node_pose, Eigen::Matrix4d meas_pose);
+    bool insertGNSS(int index, Eigen::Matrix4d meas_pose);
     bool insertLoop(int old_index, int new_index, Eigen::Matrix4f transform);
+
+    Eigen::Isometry3d toIsometry(Eigen::Matrix4d matrix);
+    bool savePose(std::ofstream& ofs, const Eigen::Matrix4f& pose);
+    bool optimize();
+    bool forceOptimize();
+
     bool isKeyFrame(PoseData cur_frontend_pose);
     bool isOptimized();
-    Eigen::Isometry3d toIsometry(Eigen::Matrix4d matrix);
-
     bool getLatestOptimizedPose(Eigen::Matrix4f &pose);
     bool getOptimizedPoses(std::deque<Eigen::Matrix4f> &poses);
-
-    bool savePose(std::ofstream& ofs, const Eigen::Matrix4f& pose);
-    bool forceOptimize();
 
 private:
     std::shared_ptr<OptimizerG2O> optimizer_ptr_;
@@ -51,6 +54,13 @@ private:
     std::ofstream ground_truth_ofs_;
     std::ofstream laser_odom_ofs_;
     std::ofstream optimized_pose_ofs_;
+
+    Eigen::VectorXd noise_odom_;
+    Eigen::VectorXd noise_gnss_;
+    Eigen::VectorXd noise_loop_;
+
+    int optimize_step_with_gnss_;
+    int optimize_step_with_loop_;
 };
 
 

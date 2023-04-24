@@ -1,9 +1,16 @@
 #include "lidar_RTK/mapping/viewer/viewer.hpp"
+#include "lidar_RTK/global_defination/global_defination.h"
+
 
 Viewer::Viewer() {
+    std::string config_file_path = WORK_SPACE_PATH + "/config/viewer.yaml";
+    YAML::Node config_node = YAML::LoadFile(config_file_path);
+
     filter_ptr_ = pcl::make_shared<pcl::VoxelGrid<pcl::PointXYZ>>();
-    filter_ptr_->setLeafSize(0.5f, 0.5f, 0.5f);
-    file_path_ = "/media/lxhong/Datasets/slam_data/key_frames";
+    filter_ptr_->setLeafSize(config_node["global_map"]["leaf_size"][0].as<float>(),
+                             config_node["global_map"]["leaf_size"][1].as<float>(),
+                             config_node["global_map"]["leaf_size"][2].as<float>());
+    file_path_ = config_node["data_path"].as<std::string>() + "/slam_data/key_frames";
 }
 
 

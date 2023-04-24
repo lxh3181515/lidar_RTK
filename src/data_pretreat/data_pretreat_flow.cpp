@@ -35,7 +35,7 @@ bool DataPretreatFlow::run() {
         transformData();
         publishData();
 
-        printDataBuff();
+        // printDataBuff();
     }
     return true;
 }
