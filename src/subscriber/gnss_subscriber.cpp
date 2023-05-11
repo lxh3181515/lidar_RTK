@@ -2,9 +2,24 @@
 
 GNSSSubscriber::GNSSSubscriber(ros::NodeHandle &nh, std::string topic_name, size_t buff_size) : nh_(nh) {
     subscriber_ = nh_.subscribe(topic_name, buff_size, &GNSSSubscriber::msgCB, this);
+
+    first_3_data_ = 0;
 }
 
 void GNSSSubscriber::msgCB(const sensor_msgs::NavSatFixConstPtr & nav_sat_fix_ptr) {
+    if (first_3_data_ < 3) {
+        if (nav_sat_fix_ptr->status.status != 2 ||
+            nav_sat_fix_ptr->position_covariance.at(0) > 5.0)
+            return;
+        else
+            first_3_data_++;
+    } else {
+        if (nav_sat_fix_ptr->status.status != 2 || 
+            nav_sat_fix_ptr->position_covariance.at(0) > 1.0)
+        return;
+    }
+
+
     buff_mutex_.lock();
 
     GNSSData tmp_gnss_data;

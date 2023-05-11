@@ -29,6 +29,7 @@ BackEnd::BackEnd() {
     new_gnss_cnt_ = 0;
     new_loop_cnt_ = 0;
     is_optimized_ = false;
+    first_frame_ = true;
 
     FileManager::CreateDirectory(file_path_ + "/slam_data");
     FileManager::InitDirectory(file_path_ + "/slam_data/key_frames", "关键帧点云");
@@ -42,8 +43,10 @@ BackEnd::BackEnd() {
 bool BackEnd::update(PoseData cur_frontend_pose, 
                      PoseData cur_gnss_pose, 
                      PointcloudData cur_cloud) {
-    if (!isKeyFrame(cur_frontend_pose))
+    if (!isKeyFrame(cur_frontend_pose) && !first_frame_) 
         return false;
+
+    first_frame_ = false;
 
     int node_num = optimizer_ptr_->getNodeNum();
     cur_key_pose_ = cur_frontend_pose.pose.cast<double>();
@@ -59,19 +62,27 @@ bool BackEnd::update(PoseData cur_frontend_pose,
 
     // 图优化
     insertOdom(node_num, cur_key_pose_, delta_pose_);
+    // static int insert_cnt = 10;
+    // if (insert_cnt++ >= 10) {
+    //     insertGNSS(node_num, cur_gnss_pose.pose.cast<double>());
+    //     insert_cnt = 0;
+    // }
     insertGNSS(node_num, cur_gnss_pose.pose.cast<double>());
+    
     optimize();
 
     last_key_pose_ = cur_key_pose_;
-
+    
     return true;
 }
 
 
 bool BackEnd::update(PoseData cur_frontend_pose, 
                      PointcloudData cur_cloud) {
-    if (!isKeyFrame(cur_frontend_pose))
+    if (!isKeyFrame(cur_frontend_pose) && !first_frame_)
         return false;
+
+    first_frame_ = false;
 
     int node_num = optimizer_ptr_->getNodeNum();
     cur_key_pose_ = cur_frontend_pose.pose.cast<double>();
@@ -82,6 +93,8 @@ bool BackEnd::update(PoseData cur_frontend_pose,
     pcl::io::savePCDFileBinary(file_path, *(cur_cloud.cloud_ptr));
 
     // 保存轨迹
+    // Eigen::Matrix4f zero = Eigen::Matrix4f::Zero();
+    // savePose(ground_truth_ofs_, zero);
     savePose(laser_odom_ofs_, cur_frontend_pose.pose);
 
     // 图优化

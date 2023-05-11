@@ -47,6 +47,7 @@ private:
     int new_loop_cnt_;
 
     bool is_optimized_;
+    bool first_frame_;
 
     std::deque<Eigen::Matrix4f> optimized_poses_;
 

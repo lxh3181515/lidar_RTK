@@ -10,6 +10,7 @@
 #include "lidar_RTK/subscriber/loop_subscriber.hpp"
 #include "lidar_RTK/publisher/odometry_publisher.h"
 #include "lidar_RTK/publisher/path_publisher.hpp"
+#include "lidar_RTK/publisher/pointcloud_publisher.h"
 #include "lidar_RTK/sensor_data/pose_data.hpp"
 #include "lidar_RTK/mapping/back_end/back_end.h"
 #include "lidar_RTK/mapping/loop_detect/loop_detect.hpp"
@@ -39,6 +40,7 @@ private:
     std::shared_ptr<LoopSubscriber> loop_sub_ptr_;
     std::shared_ptr<OdometryPublisher> backend_pub_ptr_;
     std::shared_ptr<PathPublisher> path_pub_ptr_;
+    std::shared_ptr<PointcloudPublisher> scan_pub_ptr_;
 
     std::deque<PoseData> frontend_data_buff_;
     std::deque<PoseData> gnss_data_buff_;
@@ -49,11 +51,15 @@ private:
     PoseData cur_frontend_data_;
     PoseData cur_gnss_data_;
     PointcloudData cur_cloud_data_;
+
+    Eigen::Matrix4f optimized_pose_;
     
     bool use_gnss_;
     bool use_loop_close_;
     bool have_gnss_;
     bool valid_gnss_;
+
+    bool updated_;
 };
 
 #endif

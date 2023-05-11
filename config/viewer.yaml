@@ -7,7 +7,7 @@ local_frame_num: 20
 # 各配置选项对应参数
 ## 滤波相关参数
 global_map:
-    leaf_size: [0.5, 0.5, 0.5]
+    leaf_size: [1.0, 1.0, 1.0]
 local_map:
     leaf_size: [0.5, 0.5, 0.5]
 frame:

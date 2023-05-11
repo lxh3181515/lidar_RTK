@@ -2,12 +2,13 @@ global_base_frame: &global_base_frame map
 global_child_frame: &global_child_frame lidar
 
 ## Point cloud
-pointcloud_topic: /lslidar_point_cloud
-# pointcloud_topic: /synced_cloud
+# pointcloud_topic: /lslidar_point_cloud
+pointcloud_topic: /synced_cloud
 
 ## Front end
 lidar_odom_topic: 
-    name: /laser_odom
+    # name: /laser_odom
+    name: /aft_mapped_to_init_high_frec
     base_frame: *global_base_frame
     child_frame: *global_child_frame
 
@@ -21,6 +22,9 @@ optimized_odom_topic:
 path_topic:
     name: /path
     base_frame: *global_base_frame
+scan_topic:
+    name: /back_end_scan
+    base_frame: *global_base_frame
 
 use_gnss: false
 use_loop_close: false
@@ -28,7 +32,4 @@ use_loop_close: false
 ## Viewer
 map_topic:
     name: /back_end_map
-    base_frame: *global_base_frame
-scan_topic:
-    name: /back_end_scan
     base_frame: *global_base_frame

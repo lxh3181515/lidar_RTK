@@ -20,6 +20,10 @@ BackEndFlow::BackEndFlow(ros::NodeHandle& nh):nh_(nh) {
                                                           config_node["path_topic"]["name"].as<std::string>(), 
                                                           config_node["path_topic"]["base_frame"].as<std::string>(), 
                                                           100);
+    scan_pub_ptr_       = std::make_shared<PointcloudPublisher>(nh_, 
+                                                                config_node["scan_topic"]["name"].as<std::string>(), 
+                                                                config_node["scan_topic"]["base_frame"].as<std::string>(), 
+                                                                100);
     back_end_ptr_       = std::make_shared<BackEnd>();
     loop_detect_ptr_    = std::make_shared<LoopDetect>();
 
@@ -27,6 +31,9 @@ BackEndFlow::BackEndFlow(ros::NodeHandle& nh):nh_(nh) {
     use_loop_close_ = config_node["use_loop_close"].as<bool>();
     have_gnss_ = false;
     valid_gnss_ = false;
+    updated_ = false;
+
+    optimized_pose_ = Eigen::Matrix4f::Identity();
 }
 
 
@@ -41,8 +48,9 @@ bool BackEndFlow::run() {
 
         mayHaveLoop();
 
-        if (updateGraph())
-            publishData();
+        updateGraph();
+
+        publishData();
     }
     return true;
 }
@@ -86,16 +94,31 @@ bool BackEndFlow::validData() {
     cloud_data_buff_.pop_front();
 
     // GPS
+    static Eigen::Matrix4f gnss_init_pose;
+    // static bool gnss_inited = false;
     if (have_gnss_) {
         double diff_time_gnss;
-        do {
-            cur_gnss_data_ = gnss_data_buff_.front();
-            gnss_data_buff_.pop_front();
-            diff_time_gnss = cur_frontend_data_.time - cur_gnss_data_.time;
-        } while (diff_time_gnss > 0.05 && !gnss_data_buff_.empty());
 
-        if (diff_time_gnss < 0.05 && diff_time_gnss > -0.05)
+        cur_gnss_data_ = gnss_data_buff_.front();
+        diff_time_gnss = cur_frontend_data_.time - cur_gnss_data_.time;
+
+        while (diff_time_gnss > 0.05) {
+            gnss_data_buff_.pop_front();
+            if (gnss_data_buff_.empty())
+                break;
+            cur_gnss_data_ = gnss_data_buff_.front();
+            diff_time_gnss = cur_frontend_data_.time - cur_gnss_data_.time;
+        }
+
+        if (diff_time_gnss < 0.05 && diff_time_gnss > -0.05) {
+            // if (!gnss_inited) {
+            //     gnss_inited = true;
+            //     gnss_init_pose = cur_frontend_data_.pose * cur_gnss_data_.pose.inverse();
+            // }
+            // cur_gnss_data_.pose = gnss_init_pose * cur_gnss_data_.pose;
             valid_gnss_ = true;
+            gnss_data_buff_.pop_front();
+        }
     }
 
     return true;
@@ -103,25 +126,39 @@ bool BackEndFlow::validData() {
 
 
 bool BackEndFlow::updateGraph() {
-    // pub cur scan
-    
-
     if (valid_gnss_) {
         valid_gnss_ = false;
-        return back_end_ptr_->update(cur_frontend_data_, cur_gnss_data_, cur_cloud_data_);
+        updated_ = back_end_ptr_->update(cur_frontend_data_, cur_gnss_data_, cur_cloud_data_);
     } else
-        return back_end_ptr_->update(cur_frontend_data_, cur_cloud_data_);
+        updated_ = back_end_ptr_->update(cur_frontend_data_, cur_cloud_data_);
+
+    if (updated_) {
+        std::deque<Eigen::Matrix4f> optimized_path;
+        back_end_ptr_->getOptimizedPoses(optimized_path);
+        path_pub_ptr_->publish(optimized_path);
+
+        optimized_pose_ = optimized_path.back();
+    }
+
+    return updated_;
 }
 
 
 bool BackEndFlow::publishData() {
-    Eigen::Matrix4f optimized_pose;
-    back_end_ptr_->getLatestOptimizedPose(optimized_pose);
-    backend_pub_ptr_->publish(optimized_pose, cur_frontend_data_.time);
+    static Eigen::Matrix4f last_frontend_pose = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4f delta_pose = last_frontend_pose.inverse() * cur_frontend_data_.pose;
 
-    std::deque<Eigen::Matrix4f> optimized_poses;
-    back_end_ptr_->getOptimizedPoses(optimized_poses);
-    path_pub_ptr_->publish(optimized_poses);
+    // Make sure in high freq
+    if (!updated_) {
+        optimized_pose_ = optimized_pose_ * delta_pose;
+    }
+        
+    PointcloudData scan;
+    pcl::transformPointCloud(*cur_cloud_data_.cloud_ptr, *scan.cloud_ptr, optimized_pose_);
+    scan_pub_ptr_->publish(scan.cloud_ptr);
+    backend_pub_ptr_->publish(optimized_pose_, cur_frontend_data_.time);
+
+    last_frontend_pose = cur_frontend_data_.pose;
 
     return true;
 }

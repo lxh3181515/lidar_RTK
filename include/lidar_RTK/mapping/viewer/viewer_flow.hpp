@@ -25,7 +25,6 @@ private:
 
     std::shared_ptr<PathSubscriber> path_sub_ptr_;
     std::shared_ptr<PointcloudPublisher> map_pub_ptr_;
-    std::shared_ptr<PointcloudPublisher> scan_pub_ptr_;
     std::shared_ptr<Viewer> viewer_ptr_;
     
     std::deque<nav_msgs::Path> path_data_buff_;

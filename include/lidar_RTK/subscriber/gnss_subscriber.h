@@ -24,6 +24,8 @@ private:
 
     std::deque<GNSSData> gnss_data_;
     std::mutex buff_mutex_;
+
+    int first_3_data_;
 };
 
 #endif

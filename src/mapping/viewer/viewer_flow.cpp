@@ -11,10 +11,6 @@ ViewerFlow::ViewerFlow(ros::NodeHandle& nh) :nh_(nh) {
                                                           config_node["map_topic"]["name"].as<std::string>(), 
                                                           config_node["map_topic"]["base_frame"].as<std::string>(), 
                                                           100);
-    scan_pub_ptr_ = std::make_shared<PointcloudPublisher>(nh_, 
-                                                          config_node["scan_topic"]["name"].as<std::string>(), 
-                                                          config_node["scan_topic"]["base_frame"].as<std::string>(), 
-                                                          100);
     viewer_ptr_   = std::make_shared<Viewer>();
 }
 
@@ -49,6 +45,14 @@ bool ViewerFlow::validData() {
     poses = path_data_buff_.front().poses;
     path_data_buff_.pop_front();
 
+    // 间隔20个关键帧发布一次
+    static int frame_cnt = 0;
+    frame_cnt++;
+    if (frame_cnt < 20) 
+        return false;
+    else
+        frame_cnt = 0;
+
     optimized_poses_.clear();
     for (auto &pose:poses) {
         Eigen::Matrix4f matrix;
@@ -70,22 +74,8 @@ bool ViewerFlow::validData() {
 bool ViewerFlow::publishData() {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr_(new pcl::PointCloud<pcl::PointXYZ>());
 
-    static int frame_cnt = 0;
-
-    // 间隔20个关键帧发布一次
-    if (frame_cnt >= 20) {
-        if (viewer_ptr_->getCurMap(optimized_poses_, cloud_ptr_))
-            map_pub_ptr_->publish(cloud_ptr_);
-        frame_cnt = 0;
-    }
-        
-    if (frame_cnt % 2 == 1) {
-        cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZ>());
-        if (viewer_ptr_->getCurScan(optimized_poses_.size() - 1, optimized_poses_.back(), cloud_ptr_))
-            scan_pub_ptr_->publish(cloud_ptr_);
-    }
-
-    frame_cnt++;
+    if (viewer_ptr_->getCurMap(optimized_poses_, cloud_ptr_))
+        map_pub_ptr_->publish(cloud_ptr_);
 
     return true;
 }

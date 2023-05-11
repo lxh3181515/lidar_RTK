@@ -32,22 +32,27 @@ void GNSSData::updateXYZ() {
 bool GNSSData::syncData(std::deque<GNSSData>& UnsyncedData, std::deque<GNSSData>& SyncedData, double sync_time) {
     // Find two adjacent frames at sync_time
     while (UnsyncedData.size() >= 2) {
-        if (UnsyncedData.front().time > sync_time)
+        if (UnsyncedData.front().time > sync_time) {
+            // ROS_WARN("No former data:%.5f, %.5f", UnsyncedData.front().time, sync_time);
             return false;
+        }
         if (UnsyncedData.at(1).time < sync_time) {
+            // ROS_INFO("Pop front:%.5f, %.5f", UnsyncedData.at(1).time, sync_time);
             UnsyncedData.pop_front();
             continue;
         }
         // The interval between two frames is too long
         if (sync_time - UnsyncedData.front().time > 0.2 || UnsyncedData.at(1).time - sync_time > 0.2) {
-            ROS_WARN("GNSS data frames time error.");
+            // ROS_WARN("GNSS data frames time error.");
             UnsyncedData.pop_front();
             return false;
         }
         break;
     }
-    if (UnsyncedData.size() < 2) 
+    if (UnsyncedData.size() < 2) {
+        // ROS_WARN("Not enough data.");
         return false;
+    }
     
     // Linear interpolation
     GNSSData front_data = UnsyncedData.front();

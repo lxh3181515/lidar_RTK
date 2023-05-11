@@ -60,6 +60,10 @@ add_executable(data_pretreat_node src/apps/data_pretreat_node.cpp ${ALL_SRCS})
 add_dependencies(data_pretreat_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(data_pretreat_node ${catkin_LIBRARIES} ${ALL_TARGET_LIBRARIES})
 
+add_executable(gnss_pretreat_node src/apps/gnss_pretreat_node.cpp ${ALL_SRCS})
+add_dependencies(gnss_pretreat_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(gnss_pretreat_node ${catkin_LIBRARIES} ${ALL_TARGET_LIBRARIES})
+
 add_executable(front_end_node src/apps/front_end_node.cpp ${ALL_SRCS})
 add_dependencies(front_end_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(front_end_node ${catkin_LIBRARIES} ${ALL_TARGET_LIBRARIES})
