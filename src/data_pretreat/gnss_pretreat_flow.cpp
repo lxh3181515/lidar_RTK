@@ -1,7 +1,12 @@
 #include "lidar_RTK/data_pretreat/gnss_pretreat_flow.hpp"
+#include "lidar_RTK/global_defination/global_defination.h"
 
 
 GNSSPretreatFlow::GNSSPretreatFlow(ros::NodeHandle& nh) {
+    std::string config_file_path = WORK_SPACE_PATH + "/config/topic.yaml";
+    YAML::Node config_node = YAML::LoadFile(config_file_path);
+    use_gnss_ = config_node["use_gnss"].as<bool>();
+
     pointcloud_sub_ptr_ = std::make_shared<PointcloudSubscriber>(nh, "/lslidar_point_cloud", 100000);
     gnss_sub_ptr_     = std::make_shared<GNSSSubscriber>(nh, "/fix", 1000000);
 
@@ -21,7 +26,7 @@ bool GNSSPretreatFlow::run() {
     if (!readData())
         return false;
 
-    if (!initGNSS())
+    if (use_gnss_ && !initGNSS())
         return false;
 
     // Make sure all data in the buff output.
@@ -55,7 +60,7 @@ bool GNSSPretreatFlow::readData() {
 
     // Init GNSS
     static bool sensor_inited = false;
-    if (!sensor_inited) {
+    if (use_gnss_ && !sensor_inited) {
         if (!is_valid_gnss) {
             if (unsynced_gnss_.front().time > pointcloud_time)
                 pointcloud_data_buff_.pop_front();
@@ -112,10 +117,17 @@ bool GNSSPretreatFlow::transformData() {
     static Eigen::Matrix4f t_gnss_lidar;
     static bool is_first_data = 1;
 
+    // "8"
     current_gnss_pose_ <<   0.1585,   -0.9874,         0,    0,
                             0.9874,    0.1585,         0,    0,
                                 0,         0,    1.0000,         0,
                                 0,         0,         0,    1.0000;
+
+    // outdoor
+    // current_gnss_pose_ <<   -0.0812,   -0.9967,         0,    0,
+    //                         0.9967,   -0.0812,         0,    0,
+    //                             0,         0,    1.0000,         0,
+    //                             0,         0,         0,    1.0000;
 
     // Get gnss pose
     current_gnss_data_.updateXYZ();

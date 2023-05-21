@@ -62,8 +62,8 @@ bool BackEnd::update(PoseData cur_frontend_pose,
 
     // 图优化
     insertOdom(node_num, cur_key_pose_, delta_pose_);
-    // static int insert_cnt = 10;
-    // if (insert_cnt++ >= 10) {
+    // static int insert_cnt = 0;
+    // if (insert_cnt++ >= 50) {
     //     insertGNSS(node_num, cur_gnss_pose.pose.cast<double>());
     //     insert_cnt = 0;
     // }

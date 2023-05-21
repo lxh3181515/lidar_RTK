@@ -2,6 +2,7 @@
 #define LIDAR_LOCALIZATION_DATA_PRETREAT_GNSS_PRETREAT_FLOW_HPP_
 
 #include <ros/ros.h>
+#include <yaml-cpp/yaml.h>
 
 #include "lidar_RTK/subscriber/gnss_subscriber.h"
 #include "lidar_RTK/subscriber/pointcloud_subscriber.h"
@@ -42,6 +43,7 @@ private:
 
     Eigen::Matrix4f lidar_to_gnss_;
     bool has_gnss_data_;
+    bool use_gnss_;
 };
 
 #endif
