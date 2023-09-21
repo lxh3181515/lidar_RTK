@@ -58,6 +58,7 @@ bool DataPretreatFlow::readData() {
 
     // Sync time
     double pointcloud_time = pointcloud_data_buff_.front().time;
+    // ROS_INFO("pointcloud_time: %.2f", pointcloud_time);
     bool is_valid_imu      = IMUData::syncData(unsynced_imu_, imu_data_buff_, pointcloud_time);
     bool is_valid_gnss     = GNSSData::syncData(unsynced_gnss_, gnss_data_buff_, pointcloud_time);
     bool is_valid_velocity = VelocityData::syncData(unsynced_velocity_, velocity_data_buff_, pointcloud_time);
@@ -66,6 +67,7 @@ bool DataPretreatFlow::readData() {
     if (!sensor_inited) {
         if (!is_valid_imu || !is_valid_gnss || !is_valid_velocity) {
             pointcloud_data_buff_.pop_front();
+            // ROS_WARN("Sensor init failed: %d %d %d", is_valid_imu, is_valid_gnss, is_valid_velocity);
             return false;
         }
         sensor_inited = true;

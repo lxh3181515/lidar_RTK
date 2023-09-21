@@ -62,12 +62,14 @@ bool BackEnd::update(PoseData cur_frontend_pose,
 
     // 图优化
     insertOdom(node_num, cur_key_pose_, delta_pose_);
-    // static int insert_cnt = 0;
-    // if (insert_cnt++ >= 50) {
-    //     insertGNSS(node_num, cur_gnss_pose.pose.cast<double>());
-    //     insert_cnt = 0;
-    // }
-    insertGNSS(node_num, cur_gnss_pose.pose.cast<double>());
+    static double last_time = -1.0;
+    if (last_time < 0) {
+        last_time = cur_gnss_pose.time;
+    } else if (cur_gnss_pose.time - last_time > 53.0) {
+        last_time = cur_gnss_pose.time;
+        insertGNSS(node_num, cur_gnss_pose.pose.cast<double>());
+    }
+    // insertGNSS(node_num, cur_gnss_pose.pose.cast<double>());
     
     optimize();
 
@@ -140,7 +142,7 @@ bool BackEnd::insertLoop(int old_index, int new_index, Eigen::Matrix4f transform
 
 
 bool BackEnd::optimize() {
-    if (new_gnss_cnt_ > optimize_step_with_gnss_ || new_loop_cnt_ > optimize_step_with_loop_) {
+    if (new_gnss_cnt_ >= optimize_step_with_gnss_ || new_loop_cnt_ >= optimize_step_with_loop_) {
         optimizer_ptr_->optimize();
         new_key_frame_cnt_ = 0;
         new_gnss_cnt_ = 0;
